@@ -1,10 +1,10 @@
-import os
+import asyncio
 from typing import Iterable
 from lona.html import Span, HTML, Div, Tr, Td, Table, TextArea, Widget
 from lona import LonaView, LonaApp
 from lona.protocol import INPUT_EVENT_TYPE
 from models import LogMessage
-from log_source import log_queue, start as start_log_source
+from log_source import log_queue, recieve_logs
 
 import lona_bootstrap_5 as bs
 
@@ -65,6 +65,8 @@ class LogView(LonaView):
 
 
 if __name__ == "__main__":
-    with start_log_source():
-        app.run(port=8080)
+    log_queue.start()
+    loop = asyncio.get_event_loop()
+    loop.call_soon(recieve_logs)
+    app.run(port=8080)
     # os._exit(0)

@@ -7,6 +7,7 @@ from typing import Callable, Dict
 import dataclass_factory
 import threading
 import queue
+import janus
 
 
 class MessageTypes(Enum):
@@ -38,7 +39,8 @@ def queue_subscription(queue: "BroadcastQueue", callback: Callable[[LogMessage],
 class BroadcastQueue(threading.Thread):
     def __init__(self):
         super().__init__(daemon=True)
-        self.unread_queue: "queue.Queue[LogMessage]" = queue.Queue()
+        self._unread_queue = janus.Queue()
+        self.unread_queue: "queue.Queue[LogMessage]" = self._unread_queue.sync_q  # type: ignore # TODO: bad
         self.old_messages: "deque[LogMessage]" = deque(maxlen=3000)
         self.notify: Dict[int, Callable[[LogMessage], None]] = {}
 

@@ -1,53 +1,23 @@
-import socket
-import threading
-import time
-from contextlib import contextmanager
+import asyncio
+from contextlib import asynccontextmanager
 from models import BroadcastQueue, LogMessage
 
 log_queue = BroadcastQueue()
 
 
-class LogConsumer(threading.Thread):
-    def __init__(self):
-        super().__init__()
-        self.shutdown_flag = threading.Event()
-
-    def run(self):
-        while not self.shutdown_flag.is_set():
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                try:
-                    s.connect(("localhost", 9998))
-                    # TODO: infinite reconnects for some reason ?
-                    print("Connection to server established")
-                except ConnectionRefusedError:
-                    time.sleep(0.1)
-                    print("Connection refused")
-                    continue
-                try:
-                    while True:
-                        if self.shutdown_flag.is_set():
-                            return
-                        data = ""
-
-                        while "\n" not in data:
-                            if self.shutdown_flag.is_set():
-                                return
-                            data += s.recv(1).decode()
-
-                        msg = LogMessage.from_json(data[:-1])
-                        log_queue.put(msg)
-                except (ConnectionResetError, OSError) as e:
-                    time.sleep(0.1)
-                    print("Connection lost while recieving data", e)
-
-
-@contextmanager
-def start():
-    lc = LogConsumer()
-    lc.start()
-    log_queue.start()
+@asynccontextmanager
+async def connection_context(address: str, port: int):
+    reader, writer = await asyncio.open_connection(address, port)
     try:
-        yield None
+        yield reader, writer
     finally:
-        lc.shutdown_flag.set()
-        lc.join()
+        writer.close()
+
+
+async def recieve_logs():
+    q = log_queue._unread_queue.async_q
+    while True:
+        async with connection_context("localhost", 9998) as (reader, writer):
+            while line := await reader.readline():
+                msg = LogMessage.from_json(line.decode().strip())
+                await q.put(msg)
