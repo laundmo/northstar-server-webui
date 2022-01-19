@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from collections import deque
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -6,7 +8,6 @@ import json
 from typing import Callable, Dict
 import dataclass_factory
 import threading
-import queue
 import janus
 
 
@@ -20,11 +21,11 @@ factory = dataclass_factory.Factory()
 @dataclass
 class LogMessage:
     message: str
-    type: MessageTypes
+    typ: MessageTypes
 
     @classmethod
     def from_json(cls, json_str: str):
-        return factory.load(json.loads(json_str), LogMessage)
+        return factory.load(json.loads(json_str), cls)
 
 
 @contextmanager
@@ -39,10 +40,17 @@ def queue_subscription(queue: "BroadcastQueue", callback: Callable[[LogMessage],
 class BroadcastQueue(threading.Thread):
     def __init__(self):
         super().__init__(daemon=True)
-        self._unread_queue = janus.Queue()
-        self.unread_queue: "queue.Queue[LogMessage]" = self._unread_queue.sync_q  # type: ignore # TODO: bad
         self.old_messages: "deque[LogMessage]" = deque(maxlen=3000)
         self.notify: Dict[int, Callable[[LogMessage], None]] = {}
+        self._unread_queue: janus.Queue[LogMessage] = None  # type: ignore
+        self.unread_queue: janus.SyncQueue[LogMessage] = None  # type: ignore
+
+    @classmethod
+    async def ainit(cls):
+        ins = cls()
+        ins._unread_queue = janus.Queue()
+        ins.unread_queue = ins._unread_queue.sync_q
+        return ins
 
     def __call__(self, callback: Callable[[LogMessage], None]):
         return queue_subscription(self, callback)
@@ -65,3 +73,12 @@ class BroadcastQueue(threading.Thread):
             for callback in self.notify.values():
                 callback(msg)
             self.old_messages.appendleft(msg)
+
+
+@asynccontextmanager
+async def connection_context(address: str, port: int):
+    reader, writer = await asyncio.open_connection(address, port)
+    try:
+        yield reader, writer
+    finally:
+        writer.close()
