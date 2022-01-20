@@ -8,4 +8,4 @@ receiveing logs of one server, sending commands to that server
 
 # northstar-server-webui
 
-Server Web-UI, only works in conjunction with https://github.com/laundmo/northstar-server-socketcon
+Server Web-UI, only works in conjunction with https://github.com/laundmo/NorthstarLauncher
