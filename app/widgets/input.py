@@ -62,11 +62,11 @@ class CommandInputWidget(Widget):
     def handle_change(self, input_event):
         if input_event.node is self.textinp.text_field:
             print(input_event)
-            # result = command_sender.run_command(self.textinp.value)  # type: ignore # TODO: this wont work until i can pass the command_sender in here somehow. but how?
-            # print(result)
-            # self.response.clear()
-            # for log in result:
-            #     self.response.append(Span(log.message))
+            result = input_event.request.command_sender.run_command(self.textinp.value)  # type: ignore # TODO: this wont work until i can pass the command_sender in here somehow. but how?
+            print(result)
+            self.response.clear()
+            for log in result:
+                self.response.append(Span(log.message))
             self.previous_commands.append(self.textinp.value)
             self.textinp.autocomplete = self.previous_commands
             self.textinp.value = ""
