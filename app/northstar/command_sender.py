@@ -1,7 +1,7 @@
 import asyncio
 from typing import List
 from app.northstar.command_formatter import Command
-from app.northstar.utils import LogMessage
+from app.northstar.utils import LogMessage, MessageTypes
 
 
 class CommandRunner:
@@ -34,11 +34,19 @@ class CommandRunner:
         return result
 
     async def run(self, command: Command) -> List[LogMessage]:
+        retries = 3
         while self.writer is None or self.reader is None or self.writer.is_closing():
             try:
                 await self.connect()
             except (OSError, ConnectionRefusedError) as e:
                 print(e)
+                retries -= 1
+                if retries < 1:
+                    return [
+                        LogMessage(
+                            message="Connection to server lost", typ=MessageTypes.log
+                        )
+                    ]
         result: List[LogMessage] = []
         try:
             command_formatted = command.get()
