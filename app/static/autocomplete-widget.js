@@ -14,12 +14,10 @@ function AutocompleteTextWidget(lona_window) {
   };
 
   this.data_updated = function () {
-    console.log(this.data[0]);
-    console.log(this.data[1]);
     $(this.data[0]).autocomplete({
       source: this.data[1],
+      minLength: 0,
     });
-    console.log($(this.data[0]));
   };
 }
 

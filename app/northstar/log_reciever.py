@@ -11,4 +11,4 @@ async def recieve_logs(log_queue):
                     msg = LogMessage.from_json(line.decode().strip())
                     await q.put(msg)
         except OSError as e:
-            print(e)
+            print("Log Recieve:", e)
